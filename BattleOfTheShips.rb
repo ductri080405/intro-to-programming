@@ -19,7 +19,6 @@ ASTEROID_HEIGHT = 61
 
 # Global variables
 $current_screen = nil
-$selected_player = 1
 $asteroids = []
 $last_asteroid_time = Time.now
 $background_music = nil
@@ -36,10 +35,10 @@ def animate_players(players, selected_player)
   end
 end
 
-def player_stat_text(players, selected_player, speed_texts, fire_rate_texts)
+def player_stat_text(players, selected_player_index, speed_texts, fire_rate_texts)
   i = 0
   while i < players.length
-    if i == selected_player
+    if i == selected_player_index
       speed_texts[i].color = Color.new([1, 1, 1, 1])
       fire_rate_texts[i].color = Color.new([1, 1, 1, 1])
     else
@@ -100,6 +99,7 @@ class Asteroid
 end
 
 class PlayerSelectScreen
+  attr_accessor :selected_player_index, :players, :speed_texts, :fire_rate_texts
   def initialize
     @title_text = Text.new('BATTLE OF THE SHIPS', size: 70, y: 40)
     @title_text.x = (Window.width - @title_text.width) / 2
@@ -113,7 +113,7 @@ class PlayerSelectScreen
       Player.new('ship_3.png', Window.width * (3 / 4.0) - PLAYER_WIDTH / 2, 240, 90, 60)
     ]
 
-    @selected_player = 1
+    @selected_player_index = 1
     @speed_texts = []
     @fire_rate_texts = []
     i = 0
@@ -123,23 +123,20 @@ class PlayerSelectScreen
       @fire_rate_texts << Text.new("Fire Rate - #{player.fire_rate}%", size: 20, x: player.sprite.x, y: player.sprite.y + 230, color: Color.new([1, 1, 1, 0]))
       i += 1
     end
-    animate_players(@players, @selected_player)
-    player_stat_text(@players, @selected_player, @speed_texts, @fire_rate_texts)
+    animate_players(@players, @selected_player_index)
+    player_stat_text(@players, @selected_player_index, @speed_texts, @fire_rate_texts)
   end
 
-  def change_player(direction)
-    if direction == "left"
-      @selected_player = (@selected_player - 1) % @players.length
-    elsif direction == "right"
-      @selected_player = (@selected_player + 1) % @players.length
-    end
-    animate_players(@players, @selected_player)
-    player_stat_text(@players, @selected_player, @speed_texts, @fire_rate_texts)
-  end
+end
 
-  def selected_player
-    @players[@selected_player]
+def change_player_select(direction, player_select_screen)
+  if direction == "left"
+    player_select_screen.selected_player_index = (player_select_screen.selected_player_index - 1) % player_select_screen.players.length
+  elsif direction == "right"
+    player_select_screen.selected_player_index = (player_select_screen.selected_player_index + 1) % player_select_screen.players.length
   end
+  animate_players(player_select_screen.players, player_select_screen.selected_player_index)
+  player_stat_text(player_select_screen.players, player_select_screen.selected_player_index, player_select_screen.speed_texts, player_select_screen.fire_rate_texts)
 end
 
 class GameScreen
@@ -276,13 +273,11 @@ end
 
 on :key_down do |event|
   if $current_screen.is_a?(PlayerSelectScreen)
-    if event.key == "left"
-      $current_screen.change_player("left")
-    elsif event.key == "right"
-      $current_screen.change_player("right")
-    elsif event.key == "return"
+    if event.key == "return"
       Window.clear
-      $current_screen = GameScreen.new($current_screen.selected_player)
+      $current_screen = GameScreen.new($current_screen.players[$current_screen.selected_player_index])
+    elsif event.key == "right" or event.key == "left"
+      change_player_select(event.key, $current_screen)
     end
   elsif $current_screen.is_a?(GameScreen)
     if event.key == "escape"
